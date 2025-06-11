@@ -4,6 +4,18 @@
 #include <pthread.h>
 #include <unistd.h>
 
+typedef struct {
+    unsigned int *vetor;
+    unsigned int tam_vetor;
+    unsigned int inicio_bloco;
+    unsigned int intervalo;
+} pedasco_t;
+
+typedef struct {
+    unsigned int *ret_vec;
+    unsigned int ret_tam;
+} ret_t;
+
 // Funcao de ordenacao fornecida. Não pode alterar.
 void bubble_sort(int *v, int tam){
     int i, j, temp, trocou;
@@ -50,10 +62,56 @@ int le_vet(char *nome_arquivo, unsigned int *v, int tam) {
     return 1;
 }
 
+void* tramonteiro(void *tramontado_void) {
+    pedasco_t *tramontado = (pedasco_t*) tramontado_void;
+    unsigned int* ret_vec = malloc(tramontado->tam_vetor * sizeof(unsigned int));
+    unsigned int index = 0;
+    for (int i = 0; i < tramontado->tam_vetor; i++) {
+        if (tramontado->vetor[i] >= tramontado->inicio_bloco && tramontado->vetor[i] <= tramontado->inicio_bloco+tramontado->intervalo) {
+            ret_vec[index++] = tramontado->vetor[i];
+        }
+    }
+    ret_t *ret = malloc(sizeof(ret_t));
+    ret->ret_vec = ret_vec;
+    ret->ret_tam = index+1;
+    pthread_exit((void*) ret);
+}
+
 // Funcao principal de ordenacao. Deve ser implementada com base nas informacoes fornecidas no enunciado do trabalho.
 // Os numeros ordenados deverao ser armazenanos no proprio "vetor".
 int sort_paralelo(unsigned int *vetor, unsigned int tam, unsigned int ntasks, unsigned int nthreads) {
-    // IMPLEMENTAR!
+    // NOTE: é mais eficiente criar uma cópia do vetor e usar ela na ordenação
+    int intervalo = tam/ntasks;
+    pthread_t threads[nthreads];
+    pedasco_t* pedascos[nthreads];
+    unsigned int resto = tam % ntasks;
+    unsigned int prev_flag = 0;
+    unsigned int flag = 0;
+    for (int i = 0; i < nthreads; i++) {
+        if (flag) flag = i <= resto ? 1 : 0;
+        pedasco_t *fatia = malloc(sizeof(pedasco_t));
+        fatia->vetor = vetor;
+        fatia->tam_vetor = tam;
+        fatia->inicio_bloco = i*intervalo + prev_flag;
+        fatia->intervalo = intervalo + flag;
+        threads[i] = pthread_create(threads+i, NULL, tramonteiro, (void*)fatia);
+        pedascos[i] = fatia;
+        prev_flag = flag;
+    }
+
+    unsigned int** vetor_baldes = malloc(nthreads * sizeof(unsigned int*));
+    for (int i = 0; i < nthreads; i++) {
+        ret_t *ret;
+        pthread_join(threads[i], (void*)ret);
+        vetor_baldes[i] = ret->ret_vec;
+        free(pedascos[i]);
+    }
+
+    
+    while (1) {
+        
+    }
+
     return 1;
 }
 
