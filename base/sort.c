@@ -77,42 +77,37 @@ void* tramonteiro(void *tramontado_void) {
     pthread_exit((void*) ret);
 }
 
+unsigned int** particionar_vetor(unsigned int *vetor, unsigned int tamanho_vetor, unsigned int num_blocos){
+  unsigned int **particao = malloc(num_blocos*sizeof(unsigned int*));
+  unsigned int tamanho_do_intervalo = tamanho_vetor / num_blocos;
+  unsigned int resto = tamanho_vetor % num_blocos;
+  for (unsigned int i = 0; i < num_blocos; i++){
+    unsigned int *bloco = malloc(tamanho_do_intervalo*sizeof(unsigned int));
+    particao[i] = bloco;
+    for(unsigned int j = 0; j < tamanho_do_intervalo; j++) {
+      bloco[j] = vetor[i*tamanho_do_intervalo + j];
+    }
+  }
+  return particao;
+}
+
+
 // Funcao principal de ordenacao. Deve ser implementada com base nas informacoes fornecidas no enunciado do trabalho.
 // Os numeros ordenados deverao ser armazenanos no proprio "vetor".
 int sort_paralelo(unsigned int *vetor, unsigned int tam, unsigned int ntasks, unsigned int nthreads) {
     // NOTE: é mais eficiente criar uma cópia do vetor e usar ela na ordenação
-    int intervalo = tam/ntasks;
+    // int intervalo = tam/ntasks;
     pthread_t threads[nthreads];
     pedasco_t* pedascos[nthreads];
     unsigned int resto = tam % ntasks;
-    unsigned int prev_flag = 0;
-    unsigned int flag = 0;
-    for (int i = 0; i < nthreads; i++) {
-        if (flag) flag = i <= resto ? 1 : 0;
-        pedasco_t *fatia = malloc(sizeof(pedasco_t));
-        fatia->vetor = vetor;
-        fatia->tam_vetor = tam;
-        fatia->inicio_bloco = i*intervalo + prev_flag;
-        fatia->intervalo = intervalo + flag;
-        threads[i] = pthread_create(threads+i, NULL, tramonteiro, (void*)fatia);
-        pedascos[i] = fatia;
-        prev_flag = flag;
+    //TODO(Hélcio): paralelizar iso
+    unsigned int **particao = particionar_vetor(vetor, tam, ntasks);
+    for (int i=0; i < ntasks; i++){
+      for (int j=0; j < tam/ntasks; j++){
+        printf("%d ", particao[i][j]);
+      }
+      printf("\n");
     }
-
-    unsigned int** vetor_baldes = malloc(nthreads * sizeof(unsigned int*));
-    for (int i = 0; i < nthreads; i++) {
-        ret_t *ret;
-        pthread_join(threads[i], (void*)ret);
-        vetor_baldes[i] = ret->ret_vec;
-        free(pedascos[i]);
-    }
-
-    
-    while (1) {
-        
-    }
-
-    return 1;
 }
 
 // Funcao principal do programa. Não pode alterar.
