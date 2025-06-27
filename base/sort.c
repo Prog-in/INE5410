@@ -16,6 +16,13 @@ typedef struct {
     unsigned int ret_tam;
 } ret_t;
 
+typedef struct {
+  unsigned int *bloco;
+  unsigned int intervalo_bloco;
+  unsigned int num_baldes;
+  unsigned int upper_balde;
+} bloco_t;
+
 // Funcao de ordenacao fornecida. Não pode alterar.
 void bubble_sort(int *v, int tam){
     int i, j, temp, trocou;
@@ -91,23 +98,51 @@ unsigned int** particionar_vetor(unsigned int *vetor, unsigned int tamanho_vetor
   return particao;
 }
 
+void imprimir_matriz(unsigned int **matriz, unsigned int num_linhas, unsigned int num_colunas){
+    for (int i=0; i < num_linhas; i++){
+      for (int j=0; j < num_colunas; j++){
+        printf("%d ", particao[i][j]);
+      }
+      printf("\n");
+    }
+}
+
+void* decompor_bloco(void* info_bloco){
+  bloco_t var = *((bloco_t*) info_bloco);
+  unsigned int intervalo_balde = var.intervalo_bloco / var.num_baldes;
+  unsigned int **valor_de_retorno = malloc(var.num_blocos * sizeof(unsigned int*));
+  for (int i = 0; i < var.num_blocos; i++) {
+    unsigned int* balde = malloc(upper_balde * sizeof(unsigned int*));
+    valor_de_retorno[i] = balde;
+  }
+  // parei aq
+  for (unsigned int i = 0; i < ; i++) {
+    
+  }
+  return (void*) valor_de_retorno;
+}
 
 // Funcao principal de ordenacao. Deve ser implementada com base nas informacoes fornecidas no enunciado do trabalho.
 // Os numeros ordenados deverao ser armazenanos no proprio "vetor".
 int sort_paralelo(unsigned int *vetor, unsigned int tam, unsigned int ntasks, unsigned int nthreads) {
     // NOTE: é mais eficiente criar uma cópia do vetor e usar ela na ordenação
-    // int intervalo = tam/ntasks;
+    unsigned int intervalo = tam/ntasks;
     pthread_t threads[nthreads];
     pedasco_t* pedascos[nthreads];
     unsigned int resto = tam % ntasks;
     //TODO(Hélcio): paralelizar iso
+    //TODO(Hélcio): tratar RESTO
     unsigned int **particao = particionar_vetor(vetor, tam, ntasks);
-    for (int i=0; i < ntasks; i++){
-      for (int j=0; j < tam/ntasks; j++){
-        printf("%d ", particao[i][j]);
-      }
-      printf("\n");
+    imprimir_matriz(particao, ntasks, intervalo);
+    for (int i = 0; i < ntasks, i++){
+      unsigned int *bloco = particao[i];
+      pthread_create(threads+i, NULL, decompor_bloco, (void*)bloco);
     }
+    unsigned int **baldes = malloc(ntasks*sizeof(unsigned int**));
+    for (int i = 0; i < ntasks, i++){
+      pthread_join(threads[i], baldes[i]);
+    }
+
 }
 
 // Funcao principal do programa. Não pode alterar.
