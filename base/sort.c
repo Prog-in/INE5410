@@ -9,6 +9,7 @@ typedef struct {
     unsigned int tamanho_bloco;
     unsigned int num_baldes;
     unsigned int max_int;
+    unsigned int resto;
 } bloco_t;
 
 typedef struct {
@@ -16,6 +17,7 @@ typedef struct {
     unsigned int tamanho_vetor;
     unsigned int num_blocos;
     unsigned int indice_bloco;
+    unsigned int resto;
 } vetor_t;
 
 typedef struct {
@@ -93,15 +95,20 @@ void *particionar_vetor(void *args) {
     vetor_t *vetor = (vetor_t *) args;
     bloco_t *bloco = malloc(sizeof(bloco_t));
     unsigned int tamanho_do_intervalo = vetor->tamanho_vetor / vetor->num_blocos;
-    unsigned int *endereco_bloco = malloc(tamanho_do_intervalo * sizeof(unsigned int));
+    unsigned int *endereco_bloco = malloc(sizeof(unsigned int));
+    unsigned int resto = vetor->tamanho_vetor % vetor->num_blocos;
 
+    unsigned int flag = (vetor->indice_bloco < resto ? 1 : 0);
+    unsigned int flag_comeco = (vetor->indice_bloco > 1 && vetor->indice_bloco < resto + 1 ? 1 : 0);
     bloco->bloco = endereco_bloco;
-    bloco->tamanho_bloco = tamanho_do_intervalo;
+    bloco->tamanho_bloco = tamanho_do_intervalo + flag;
     bloco->num_baldes = vetor->num_blocos;
     bloco->max_int = vetor->tamanho_vetor - 1;
+    bloco->resto = vetor->resto;
 
-    for (unsigned int i = 0; i < tamanho_do_intervalo; i++) {
-        endereco_bloco[i] = vetor->vetor[vetor->indice_bloco * tamanho_do_intervalo + i];
+
+    for (unsigned int i = 0; i < bloco->tamanho_bloco; i++) {
+        endereco_bloco[i] = vetor->vetor[vetor->indice_bloco * tamanho_do_intervalo + i + flag_comeco];
     }
     return (void *) bloco;
 }
@@ -141,11 +148,7 @@ void imprimir_containeres(unsigned int ntasks, conteiner_t **containeres) {
 
 void *decompor_bloco(void *args) {
     bloco_t *bloco = (bloco_t *) args;
-    unsigned int intervalo_balde = bloco->tamanho_bloco / bloco->num_baldes;
-
-    if (intervalo_balde == 0) intervalo_balde = 1;
-
-    balde_t **itens = malloc(sizeof(balde_t) * bloco->num_baldes);
+    balde_t **itens = malloc(sizeof(balde_t *) * bloco->num_baldes);
 
     barril_t *barril = malloc(sizeof(barril_t));
     barril->num_baldes = bloco->num_baldes;
@@ -159,15 +162,20 @@ void *decompor_bloco(void *args) {
     }
 
     for (int i = 0; i < bloco->tamanho_bloco; i++) {
-        unsigned int intervalo = (bloco->max_int + 1) / bloco->num_baldes;
-        unsigned int indice_alvo = bloco->bloco[i] / intervalo;
-        balde_t *balde_alvo = itens[indice_alvo];
-        balde_alvo->itens[balde_alvo->tamanho++] = bloco->bloco[i];
+        unsigned int inicio_balde = 0;
+        // achar o balde para onde o elemento vai
+        for (unsigned int j = 0; j < bloco->num_baldes; j++) {
+            unsigned int intervalo_balde = (bloco->max_int + 1) / bloco->num_baldes;
+            if (j < bloco->resto) intervalo_balde++;
+            // achou
+            if (inicio_balde <= bloco->bloco[i] && bloco->bloco[i] <= inicio_balde + intervalo_balde) {
+                itens[j]->itens[itens[j]->tamanho++] = bloco->bloco[i];
+                break;
+            }
+            inicio_balde += intervalo_balde + 1;
+            if (0 < j && j < bloco->resto + 1) inicio_balde++;
+        }
     }
-    // for (int i = 0; i < bloco->num_baldes; i++) {
-    //     itens[i]->itens = realloc(
-    //         itens[i]->itens, itens[i]->tamanho * sizeof(unsigned int));
-    // }
 
     free(bloco->bloco);
     free(bloco);
@@ -187,10 +195,7 @@ void *ordenar_baldes(void *arg) {
 
 void *ordenar_container(void *arg) {
     conteiner_t *container = (conteiner_t *) arg;
-
-    for (int i = 0; i < container->tamanho; i++) {
-        bubble_sort(container->itens, container->tamanho);
-    }
+    bubble_sort(container->itens, container->tamanho);
 
     return NULL;
 }
@@ -226,14 +231,15 @@ int sort_paralelo(unsigned int *vetor, unsigned int tam, unsigned int ntasks, un
 
     // Fase 1: Particionar o vetor
     bloco_t *particao[ntasks];
-
+    unsigned int resto = tam % ntasks;
     vetor_t *subvetores[ntasks];
     for (unsigned int i = 0; i < ntasks; i++) {
-        subvetores[i] = malloc(tam * sizeof(vetor_t));
+        subvetores[i] = malloc(sizeof(vetor_t));
         subvetores[i]->vetor = vetor;
         subvetores[i]->tamanho_vetor = tam;
         subvetores[i]->num_blocos = ntasks;
         subvetores[i]->indice_bloco = i;
+        subvetores[i]->resto = resto;
         pthread_create(&threads[i], NULL, particionar_vetor, (void *) subvetores[i]);
     }
 
@@ -241,9 +247,6 @@ int sort_paralelo(unsigned int *vetor, unsigned int tam, unsigned int ntasks, un
         pthread_join(threads[i], (void *) (particao + i));
         free(subvetores[i]);
     }
-
-    // DEBUG
-    // imprimir_matriz(particao, ntasks, intervalo);
 
     // Fase 2: Dividir blocos da partição em baldes
     barril_t *barris[ntasks]; // barril := lista com todos os baldes
