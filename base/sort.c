@@ -5,45 +5,66 @@
 #include <unistd.h>
 
 typedef struct {
-  unsigned int *bloco;
-  unsigned int intervalo_bloco;
-  unsigned int num_baldes;
+    unsigned int *bloco;
+    unsigned int tamanho_bloco;
+    unsigned int num_baldes;
+    unsigned int max_int;
 } bloco_t;
 
 typedef struct {
-  unsigned int *vetor;
-  unsigned int tamanho_vetor;
-  unsigned int num_blocos;
-  unsigned int indice_bloco;
+    unsigned int *vetor;
+    unsigned int tamanho_vetor;
+    unsigned int num_blocos;
+    unsigned int indice_bloco;
 } vetor_t;
 
 typedef struct {
-  unsigned int *balde;
-  unsigned int *tamanho;
+    unsigned int *itens;
+    unsigned int tamanho;
 } balde_t;
 
+typedef struct {
+    balde_t **baldes;
+    unsigned int num_baldes;
+} barril_t;
+
+typedef struct {
+    barril_t **barris;
+    unsigned int indice_balde;
+    unsigned int num_barris;
+    unsigned int tam_vetor;
+} caixote_t;
+
+typedef balde_t conteiner_t;
+
+typedef struct {
+    unsigned int *vetor;
+    conteiner_t *container;
+    unsigned int inicio;
+} vetorizado_t;
+
 // Funcao de ordenacao fornecida. Não pode alterar.
-void bubble_sort(int *v, int tam){
+void bubble_sort(int *v, int tam) {
     int i, j, temp, trocou;
 
-    for(j = 0; j < tam - 1; j++){
+    for (j = 0; j < tam - 1; j++) {
         trocou = 0;
-        for(i = 0; i < tam - 1; i++){
-            if(v[i + 1] < v[i]){
+        for (i = 0; i < tam - 1; i++) {
+            if (v[i + 1] < v[i]) {
                 temp = v[i];
                 v[i] = v[i + 1];
                 v[i + 1] = temp;
                 trocou = 1;
             }
         }
-        if(!trocou) break;
+        if (!trocou) break;
     }
 }
 
 // Funcao para imprimir um vetor. Não pode alterar.
 void imprime_vet(unsigned int *v, int tam) {
     int i;
-    for(i = 0; i < tam; i++)
+    for (i = 0; i < tam; i++)
         printf("%d ", v[i]);
     printf("\n");
 }
@@ -68,116 +89,250 @@ int le_vet(char *nome_arquivo, unsigned int *v, int tam) {
     return 1;
 }
 
-void* particionar_vetor(void* args){
-    vetor_t vetor = *((vetor_t*) args);
-    bloco_t* bloco = malloc(sizeof(bloco_t)); 
-    unsigned int tamanho_do_intervalo = vetor.tamanho_vetor / vetor.num_blocos;
-    unsigned int resto = vetor.tamanho_vetor % vetor.num_blocos;
-    unsigned int *endereco_bloco = malloc(tamanho_do_intervalo*sizeof(unsigned int));
-    
+void *particionar_vetor(void *args) {
+    vetor_t *vetor = (vetor_t *) args;
+    bloco_t *bloco = malloc(sizeof(bloco_t));
+    unsigned int tamanho_do_intervalo = vetor->tamanho_vetor / vetor->num_blocos;
+    unsigned int *endereco_bloco = malloc(tamanho_do_intervalo * sizeof(unsigned int));
+
     bloco->bloco = endereco_bloco;
-    bloco->intervalo_bloco = tamanho_do_intervalo;
-    bloco->num_baldes = vetor.num_blocos;
-    
+    bloco->tamanho_bloco = tamanho_do_intervalo;
+    bloco->num_baldes = vetor->num_blocos;
+    bloco->max_int = vetor->tamanho_vetor - 1;
+
     for (unsigned int i = 0; i < tamanho_do_intervalo; i++) {
-      endereco_bloco[i] = vetor->vetor[vetor->indice_bloco*tamanho_do_intervalo + i];
+        endereco_bloco[i] = vetor->vetor[vetor->indice_bloco * tamanho_do_intervalo + i];
     }
-    free(&vetor);
-    return (void*) bloco;
+    return (void *) bloco;
 }
 
-void imprimir_matriz(unsigned int **matriz, unsigned int num_linhas, unsigned int num_colunas){
-    for (int i = 0; i < num_linhas; i++){
-        for (int j = 0; j < num_colunas; j++){
-            printf("%d ", particao[i][j]);
-          }
+void imprimir_matriz(bloco_t **matriz, unsigned int num_linhas, unsigned int num_colunas) {
+    for (int i = 0; i < num_linhas; i++) {
+        for (int j = 0; j < num_colunas; j++) {
+            printf("%d ", (matriz[i])->bloco[j]);
+        }
+        printf("\n");
+    }
+}
+
+void imprimir_barris(unsigned int quantidade, barril_t **barris) {
+    for (unsigned int i = 0; i < quantidade; i++) {
+        printf("barril: %d\n", i);
+        for (unsigned int j = 0; j < barris[i]->num_baldes; j++) {
+            printf("balde %d: ", j);
+            for (unsigned int k = 0; k < barris[i]->baldes[j]->tamanho; k++) {
+                printf("%d ", barris[i]->baldes[j]->itens[k]);
+            }
             printf("\n");
-      }
+        }
+        printf("\n");
+    }
 }
 
-void* decompor_bloco(void* args){
-    bloco_t var = ((bloco_t) args);
-    unsigned int intervalo_balde = var.intervalo_bloco / var.num_baldes;
-
-    if (intervalo_balde == 0 ) intervalo_balde = 1;
-
-    unsigned int *valor_de_retorno = malloc(var.num_blocos * sizeof(unsigned int));
-
-    return_baldes_t * ret = malloc(sizeof(return_baldes_t));
-    ret->tamanho = arg num_baldes;
-    ret->baldes =
-
-    for (int i = 0; i < var.num_baldes; i++) {
-        unsigned int* balde = malloc(tam_max_bloco * sizeof(unsigned int*));
-        valor_de_retorno[i] = balde;
+void imprimir_containeres(unsigned int ntasks, conteiner_t **containeres) {
+    for (unsigned int i = 0; i < ntasks; i++) {
+        printf("container %d:\n", i);
+        for (unsigned int j = 0; j < containeres[i]->tamanho; j++) {
+            printf("%d ", containeres[i]->itens[j]);
+        }
+        printf("\n");
     }
-    // parei aq
-    for (unsigned int i = 0; i < ; i++) {
+}
 
+void *decompor_bloco(void *args) {
+    bloco_t *bloco = (bloco_t *) args;
+    unsigned int intervalo_balde = bloco->tamanho_bloco / bloco->num_baldes;
+
+    if (intervalo_balde == 0) intervalo_balde = 1;
+
+    balde_t **itens = malloc(sizeof(balde_t) * bloco->num_baldes);
+
+    barril_t *barril = malloc(sizeof(barril_t));
+    barril->num_baldes = bloco->num_baldes;
+    barril->baldes = itens;
+
+    for (int i = 0; i < bloco->num_baldes; i++) {
+        balde_t *balde = malloc(sizeof(balde_t));
+        balde->itens = malloc(bloco->tamanho_bloco * sizeof(unsigned int));
+        balde->tamanho = 0;
+        itens[i] = balde;
     }
-    return (void*) valor_de_retorno;
-  }
 
-// Funcao principal de ordenacao. Deve ser implementada com base nas informacoes fornecidas no enunciado do trabalho.
-// Os numeros ordenados deverao ser armazenanos no proprio "vetor".
+    for (int i = 0; i < bloco->tamanho_bloco; i++) {
+        unsigned int intervalo = (bloco->max_int + 1) / bloco->num_baldes;
+        unsigned int indice_alvo = bloco->bloco[i] / intervalo;
+        balde_t *balde_alvo = itens[indice_alvo];
+        balde_alvo->itens[balde_alvo->tamanho++] = bloco->bloco[i];
+    }
+    // for (int i = 0; i < bloco->num_baldes; i++) {
+    //     itens[i]->itens = realloc(
+    //         itens[i]->itens, itens[i]->tamanho * sizeof(unsigned int));
+    // }
+
+    free(bloco->bloco);
+    free(bloco);
+
+    return (void *) barril;
+}
+
+void *ordenar_baldes(void *arg) {
+    barril_t *barril = (barril_t *) arg;
+
+    for (int i = 0; i < barril->num_baldes; i++) {
+        bubble_sort(barril->baldes[i]->itens, barril->baldes[i]->tamanho);
+    }
+
+    return NULL;
+}
+
+void *ordenar_container(void *arg) {
+    conteiner_t *container = (conteiner_t *) arg;
+
+    for (int i = 0; i < container->tamanho; i++) {
+        bubble_sort(container->itens, container->tamanho);
+    }
+
+    return NULL;
+}
+
+void *conteinerizar(void *arg) {
+    caixote_t *caixote = (caixote_t *) arg;
+    conteiner_t *conteiner = malloc(sizeof(conteiner_t));
+    conteiner->itens = malloc(caixote->tam_vetor * sizeof(unsigned int));
+    conteiner->tamanho = 0;
+    for (int i = 0; i < caixote->num_barris; i++) {
+        balde_t *balde = (caixote->barris[i])->baldes[caixote->indice_balde];
+        for (int j = 0; j < balde->tamanho; j++) {
+            conteiner->itens[conteiner->tamanho++] = balde->itens[j];
+        }
+    }
+    return (void *) conteiner;
+}
+
+void *vetorizador(void *arg) {
+    vetorizado_t *vetorizado = (vetorizado_t *) arg;
+    for (unsigned int i = 0; i < vetorizado->container->tamanho; i++) {
+        vetorizado->vetor[vetorizado->inicio + i] = vetorizado->container->itens[i];
+    }
+    return NULL;
+}
+
 int sort_paralelo(unsigned int *vetor, unsigned int tam, unsigned int ntasks, unsigned int nthreads) {
     // NOTE: é mais eficiente criar uma cópia do vetor e usar ela na ordenação
 
     if (ntasks < nthreads) nthreads = ntasks;
 
     pthread_t threads[nthreads];
-    return_baldes_t results[nthreads];
-    unsigned int intervalo = tam/ntasks;
-    unsigned int pos = 0;
-    unsigned int resto = tam % ntasks;
 
-// Fase 1: Particionar o vetor
-// Fase 2: Dividir blocos da partição em baldes
-// Fase 3: Aplicar bubble sort em cada balde
-// Fase 4: Mesclar conteúdo dos baldes e armazenar em contêineres
-// Fase 5: Aplicar bubble sort em cada contêiner
-// Fase 6: Concatenar contêineres
+    // Fase 1: Particionar o vetor
+    bloco_t *particao[ntasks];
 
-    // Fase 1
-    unsigned int *particao[ntasks]
-
+    vetor_t *subvetores[ntasks];
     for (unsigned int i = 0; i < ntasks; i++) {
-      vetor_t* subvetor = malloc(sizeof(vetor_t));
-      subvetor->vetor = vetor;
-      subvetor->tamanho_vetor = tam;
-      subvetor->num_blocos = ntasks;
-      subvetor->indice_bloco = i;
-      pthread_create(&threads[i], NULL, particionar_vetor, (void *) subvetor);
+        subvetores[i] = malloc(tam * sizeof(vetor_t));
+        subvetores[i]->vetor = vetor;
+        subvetores[i]->tamanho_vetor = tam;
+        subvetores[i]->num_blocos = ntasks;
+        subvetores[i]->indice_bloco = i;
+        pthread_create(&threads[i], NULL, particionar_vetor, (void *) subvetores[i]);
     }
 
-    for (unsigned int i = 0; i < ntasks, i++) {
-      pthread_join(threads[i], (void *)particao[i]);
+    for (unsigned int i = 0; i < ntasks; i++) {
+        pthread_join(threads[i], (void *) (particao + i));
+        free(subvetores[i]);
     }
 
     // DEBUG
-    imprimir_matriz(particao, ntasks, intervalo);
+    // imprimir_matriz(particao, ntasks, intervalo);
 
-    // Fase 2
-    balde_t* barril[ntasks]; // barril := lista com todos os baldes
-
+    // Fase 2: Dividir blocos da partição em baldes
+    barril_t *barris[ntasks]; // barril := lista com todos os baldes
     for (unsigned int i = 0; i < ntasks; i++) {
-        bloco_t * args = malloc(sizeof(bloco_t));
-        args->bloco = particao[i];
-        args->intervalo_bloco = tam_bloco + (i < resto ? 1 : 0);
-        args->num_baldes = ntasks;
-        args->tam_max_bloco = tam;
-        pthread_create(&threads[i], NULL, decompor_bloco, (void*)args);
-        pos_atual += args->intervalo_bloco;
+        pthread_create(&threads[i], NULL, decompor_bloco, (void *) particao[i]);
     }
 
     for (unsigned int i = 0; i < ntasks; i++) {
-        pthread_join(threads[i], (void *) barril[i]);
+        pthread_join(threads[i], (void *) (barris + i));
     }
+
+    // DEBUG
+    // imprimir_barris(ntasks, barris);
+
+    // Fase 3: Aplicar bubble sort em cada balde
+    for (unsigned int i = 0; i < ntasks; i++) {
+        pthread_create(&threads[i], NULL, ordenar_baldes, (void *) barris[i]);
+    }
+    for (unsigned int i = 0; i < ntasks; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    imprimir_barris(ntasks, barris);
+
+    caixote_t *caixotes[ntasks];
+    // Fase 4: Mesclar conteúdo dos baldes e armazenar em contêineres
+    for (unsigned int i = 0; i < ntasks; i++) {
+        caixotes[i] = malloc(sizeof(caixote_t));
+        caixotes[i]->barris = barris;
+        caixotes[i]->indice_balde = i;
+        caixotes[i]->num_barris = ntasks;
+        caixotes[i]->tam_vetor = tam;
+        pthread_create(&threads[i], NULL, conteinerizar, (void *) caixotes[i]);
+    }
+
+    conteiner_t *containeres[ntasks];
+    for (unsigned int i = 0; i < ntasks; i++) {
+        pthread_join(threads[i], (void *) (containeres + i));
+        free(caixotes[i]);
+    }
+
+    // imprimir_containeres(ntasks, containeres);
+
+    // Fase 5: Aplicar bubble sort em cada contêiner
+    for (unsigned int i = 0; i < ntasks; i++) {
+        pthread_create(&threads[i], NULL, ordenar_container, (void *) containeres[i]);
+    }
+    for (unsigned int i = 0; i < ntasks; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    // imprimir_containeres(ntasks, containeres);
+
+    // Fase 6: Concatenar contêineres
+    unsigned int inicio = 0;
+    vetorizado_t *vetorizados[ntasks];
+    for (unsigned int i = 0; i < ntasks; i++) {
+        vetorizados[i] = malloc(sizeof(vetorizado_t));
+        vetorizados[i]->vetor = vetor;
+        vetorizados[i]->container = containeres[i];
+        vetorizados[i]->inicio = inicio;
+        pthread_create(&threads[i], NULL, vetorizador, (void *) vetorizados[i]);
+        inicio += vetorizados[i]->container->tamanho;
+    }
+    for (unsigned int i = 0; i < ntasks; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    // Limpando a casa
+    for (unsigned int i = 0; i < ntasks; i++) {
+        free(vetorizados[i]->container->itens);
+        free(vetorizados[i]->container);
+        free(vetorizados[i]);
+        for (unsigned int j = 0; j < barris[i]->num_baldes; j++) {
+            free(barris[i]->baldes[j]->itens);
+            free(barris[i]->baldes[j]);
+        }
+        free(barris[i]->baldes);
+        free(barris[i]);
+    }
+    return 0;
 }
+
+// Funcao principal de ordenacao. Deve ser implementada com base nas informacoes fornecidas no enunciado do trabalho.
+
+// Os numeros ordenados deverao ser armazenanos no proprio "vetor".
 
 // Funcao principal do programa. Não pode alterar.
 int main(int argc, char **argv) {
-    
     // Verifica argumentos de entrada
     if (argc != 5) {
         fprintf(stderr, "Uso: %s <input> <nnumbers> <ntasks> <nthreads>\n", argv[0]);
@@ -188,7 +343,7 @@ int main(int argc, char **argv) {
     unsigned int nnumbers = atoi(argv[2]);
     unsigned int ntasks = atoi(argv[3]);
     unsigned int nthreads = atoi(argv[4]);
-    
+
     // Aloca vetor
     unsigned int *vetor = malloc(nnumbers * sizeof(unsigned int));
 
@@ -215,6 +370,6 @@ int main(int argc, char **argv) {
 
     // Imprime o tempo de ordenacao
     printf("Tempo: %.6f segundos\n", fim.tv_sec - inicio.tv_sec + (fim.tv_usec - inicio.tv_usec) / 1e6);
-    
+
     return 0;
 }
