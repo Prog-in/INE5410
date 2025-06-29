@@ -5,14 +5,6 @@
 #include <unistd.h>
 
 typedef struct {
-    unsigned int *bloco;
-    unsigned int tamanho_bloco;
-    unsigned int num_baldes;
-    unsigned int max_int;
-    unsigned int resto;
-} bloco_t;
-
-typedef struct {
     unsigned int *vetor;
     unsigned int tamanho_vetor;
     unsigned int num_blocos;
@@ -21,9 +13,19 @@ typedef struct {
 } vetor_t;
 
 typedef struct {
+    unsigned int *bloco;
+    unsigned int tamanho_bloco;
+    unsigned int num_baldes;
+    unsigned int max_int;
+    unsigned int resto;
+} bloco_t;
+
+typedef struct {
     unsigned int *itens;
     unsigned int tamanho;
-} balde_t;
+} arr_t;
+
+typedef arr_t balde_t;
 
 typedef struct {
     balde_t **baldes;
@@ -37,7 +39,7 @@ typedef struct {
     unsigned int tam_vetor;
 } caixote_t;
 
-typedef balde_t conteiner_t;
+typedef arr_t conteiner_t;
 
 typedef struct {
     unsigned int *vetor;
@@ -108,7 +110,8 @@ void *particionar_vetor(void *args) {
     bloco->resto = vetor->resto;
 
     for (unsigned int i = 0; i < bloco->tamanho_bloco; i++) {
-        unsigned int start_index = vetor->indice_bloco*(tamanho_do_intervalo+flag_offset_parcial) + resto*flag_offset_total;
+        unsigned int start_index = vetor->indice_bloco * (tamanho_do_intervalo + flag_offset_parcial) + resto *
+                                   flag_offset_total;
         bloco->bloco[i] = vetor->vetor[start_index + i];
     }
     return (void *) bloco;
@@ -116,7 +119,7 @@ void *particionar_vetor(void *args) {
 
 void *decompor_bloco(void *args) {
     bloco_t *bloco = (bloco_t *) args;
-    balde_t **itens = malloc(sizeof(balde_t *) * bloco->num_baldes);
+    balde_t * *itens = malloc(sizeof(balde_t *) * bloco->num_baldes);
 
     barril_t *barril = malloc(sizeof(barril_t));
     barril->num_baldes = bloco->num_baldes;
@@ -154,7 +157,7 @@ void *ordenar_baldes(void *arg) {
     barril_t *barril = (barril_t *) arg;
 
     for (int i = 0; i < barril->num_baldes; i++) {
-        bubble_sort((int*) barril->baldes[i]->itens, (int) barril->baldes[i]->tamanho);
+        bubble_sort((int *) barril->baldes[i]->itens, (int) barril->baldes[i]->tamanho);
     }
 
     return NULL;
@@ -162,7 +165,7 @@ void *ordenar_baldes(void *arg) {
 
 void *ordenar_container(void *arg) {
     conteiner_t *container = (conteiner_t *) arg;
-    bubble_sort((int*) container->itens, (int) container->tamanho);
+    bubble_sort((int *) container->itens, (int) container->tamanho);
 
     return NULL;
 }
@@ -224,6 +227,7 @@ void imprimir_containeres(unsigned int ntasks, conteiner_t **containeres) {
 }
 
 int sort_paralelo(unsigned int *vetor, unsigned int tam, unsigned int ntasks, unsigned int nthreads) {
+    if (ntasks > tam) ntasks = tam;
     if (nthreads > ntasks) nthreads = ntasks;
 
     pthread_t threads[nthreads];
