@@ -154,7 +154,7 @@ void *ordenar_baldes(void *arg) {
     barril_t *barril = (barril_t *) arg;
 
     for (int i = 0; i < barril->num_baldes; i++) {
-        bubble_sort(barril->baldes[i]->itens, barril->baldes[i]->tamanho);
+        bubble_sort((int*) barril->baldes[i]->itens, (int) barril->baldes[i]->tamanho);
     }
 
     return NULL;
@@ -162,7 +162,7 @@ void *ordenar_baldes(void *arg) {
 
 void *ordenar_container(void *arg) {
     conteiner_t *container = (conteiner_t *) arg;
-    bubble_sort(container->itens, container->tamanho);
+    bubble_sort((int*) container->itens, (int) container->tamanho);
 
     return NULL;
 }
@@ -224,6 +224,8 @@ void imprimir_containeres(unsigned int ntasks, conteiner_t **containeres) {
 }
 
 int sort_paralelo(unsigned int *vetor, unsigned int tam, unsigned int ntasks, unsigned int nthreads) {
+    if (nthreads > ntasks) nthreads = ntasks;
+
     pthread_t threads[nthreads];
 
     // Fase 1: Particionar o vetor
