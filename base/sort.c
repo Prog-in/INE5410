@@ -94,56 +94,24 @@ int le_vet(char *nome_arquivo, unsigned int *v, int tam) {
 void *particionar_vetor(void *args) {
     vetor_t *vetor = (vetor_t *) args;
     bloco_t *bloco = malloc(sizeof(bloco_t));
-    unsigned int tamanho_do_intervalo = vetor->tamanho_vetor / vetor->num_blocos;
-    unsigned int *endereco_bloco = malloc(sizeof(unsigned int));
-    unsigned int resto = vetor->tamanho_vetor % vetor->num_blocos;
 
-    unsigned int flag = (vetor->indice_bloco < resto ? 1 : 0);
-    unsigned int flag_comeco = (vetor->indice_bloco > 1 && vetor->indice_bloco < resto + 1 ? 1 : 0);
-    bloco->bloco = endereco_bloco;
-    bloco->tamanho_bloco = tamanho_do_intervalo + flag;
+    unsigned int resto = vetor->tamanho_vetor % vetor->num_blocos;
+    unsigned int tamanho_adicional = vetor->indice_bloco < resto;
+    unsigned int flag_offset_parcial = 0 < vetor->indice_bloco && vetor->indice_bloco <= resto;
+    unsigned int flag_offset_total = vetor->indice_bloco > resto;
+    unsigned int tamanho_do_intervalo = vetor->tamanho_vetor / vetor->num_blocos;
+
+    bloco->tamanho_bloco = tamanho_do_intervalo + tamanho_adicional;
+    bloco->bloco = malloc(bloco->tamanho_bloco * sizeof(unsigned int));
     bloco->num_baldes = vetor->num_blocos;
     bloco->max_int = vetor->tamanho_vetor - 1;
     bloco->resto = vetor->resto;
 
-
     for (unsigned int i = 0; i < bloco->tamanho_bloco; i++) {
-        endereco_bloco[i] = vetor->vetor[vetor->indice_bloco * tamanho_do_intervalo + i + flag_comeco];
+        unsigned int start_index = vetor->indice_bloco*(tamanho_do_intervalo+flag_offset_parcial) + resto*flag_offset_total;
+        bloco->bloco[i] = vetor->vetor[start_index + i];
     }
     return (void *) bloco;
-}
-
-void imprimir_matriz(bloco_t **matriz, unsigned int num_linhas, unsigned int num_colunas) {
-    for (int i = 0; i < num_linhas; i++) {
-        for (int j = 0; j < num_colunas; j++) {
-            printf("%d ", (matriz[i])->bloco[j]);
-        }
-        printf("\n");
-    }
-}
-
-void imprimir_barris(unsigned int quantidade, barril_t **barris) {
-    for (unsigned int i = 0; i < quantidade; i++) {
-        printf("barril: %d\n", i);
-        for (unsigned int j = 0; j < barris[i]->num_baldes; j++) {
-            printf("balde %d: ", j);
-            for (unsigned int k = 0; k < barris[i]->baldes[j]->tamanho; k++) {
-                printf("%d ", barris[i]->baldes[j]->itens[k]);
-            }
-            printf("\n");
-        }
-        printf("\n");
-    }
-}
-
-void imprimir_containeres(unsigned int ntasks, conteiner_t **containeres) {
-    for (unsigned int i = 0; i < ntasks; i++) {
-        printf("container %d:\n", i);
-        for (unsigned int j = 0; j < containeres[i]->tamanho; j++) {
-            printf("%d ", containeres[i]->itens[j]);
-        }
-        printf("\n");
-    }
 }
 
 void *decompor_bloco(void *args) {
@@ -167,13 +135,12 @@ void *decompor_bloco(void *args) {
         for (unsigned int j = 0; j < bloco->num_baldes; j++) {
             unsigned int intervalo_balde = (bloco->max_int + 1) / bloco->num_baldes;
             if (j < bloco->resto) intervalo_balde++;
-            // achou
-            if (inicio_balde <= bloco->bloco[i] && bloco->bloco[i] <= inicio_balde + intervalo_balde) {
+            if (inicio_balde <= bloco->bloco[i] && bloco->bloco[i] <= inicio_balde + intervalo_balde - 1) {
+                // achou
                 itens[j]->itens[itens[j]->tamanho++] = bloco->bloco[i];
                 break;
             }
-            inicio_balde += intervalo_balde + 1;
-            if (0 < j && j < bloco->resto + 1) inicio_balde++;
+            inicio_balde += intervalo_balde;
         }
     }
 
@@ -222,17 +189,47 @@ void *vetorizador(void *arg) {
     return NULL;
 }
 
+void imprimir_blocos(unsigned int quantidade, bloco_t **blocos) {
+    for (int i = 0; i < quantidade; i++) {
+        printf("Bloco %d (tam %d): ", i, blocos[i]->tamanho_bloco);
+        for (int j = 0; j < blocos[i]->tamanho_bloco; j++) {
+            printf("%d ", blocos[i]->bloco[j]);
+        }
+        printf("\n");
+    }
+}
+
+void imprimir_barris(unsigned int quantidade, barril_t **barris) {
+    for (unsigned int i = 0; i < quantidade; i++) {
+        printf("barril: %d\n", i);
+        for (unsigned int j = 0; j < barris[i]->num_baldes; j++) {
+            printf("balde %d: ", j);
+            for (unsigned int k = 0; k < barris[i]->baldes[j]->tamanho; k++) {
+                printf("%d ", barris[i]->baldes[j]->itens[k]);
+            }
+            printf("\n");
+        }
+        printf("\n");
+    }
+}
+
+void imprimir_containeres(unsigned int ntasks, conteiner_t **containeres) {
+    for (unsigned int i = 0; i < ntasks; i++) {
+        printf("container %d:\n", i);
+        for (unsigned int j = 0; j < containeres[i]->tamanho; j++) {
+            printf("%d ", containeres[i]->itens[j]);
+        }
+        printf("\n");
+    }
+}
+
 int sort_paralelo(unsigned int *vetor, unsigned int tam, unsigned int ntasks, unsigned int nthreads) {
-    // NOTE: é mais eficiente criar uma cópia do vetor e usar ela na ordenação
-
-    if (ntasks < nthreads) nthreads = ntasks;
-
     pthread_t threads[nthreads];
 
     // Fase 1: Particionar o vetor
+    vetor_t *subvetores[ntasks];
     bloco_t *particao[ntasks];
     unsigned int resto = tam % ntasks;
-    vetor_t *subvetores[ntasks];
     for (unsigned int i = 0; i < ntasks; i++) {
         subvetores[i] = malloc(sizeof(vetor_t));
         subvetores[i]->vetor = vetor;
@@ -240,51 +237,71 @@ int sort_paralelo(unsigned int *vetor, unsigned int tam, unsigned int ntasks, un
         subvetores[i]->num_blocos = ntasks;
         subvetores[i]->indice_bloco = i;
         subvetores[i]->resto = resto;
-        pthread_create(&threads[i], NULL, particionar_vetor, (void *) subvetores[i]);
+        // não é a primeira vez da thread computando
+        if (i % nthreads != i) {
+            // capturando o valor de retorno da execução anterior dessa thread
+            pthread_join(threads[i % nthreads], (void *) (particao + i - nthreads));
+            free(subvetores[i - nthreads]);
+        }
+        pthread_create(&threads[i % nthreads], NULL, particionar_vetor, (void *) subvetores[i]);
     }
-
-    for (unsigned int i = 0; i < ntasks; i++) {
-        pthread_join(threads[i], (void *) (particao + i));
+    for (unsigned int i = ntasks - nthreads; i < ntasks; i++) {
+        pthread_join(threads[i % nthreads], (void *) (particao + i));
         free(subvetores[i]);
     }
+
+    // imprimir_blocos(ntasks, particao);
 
     // Fase 2: Dividir blocos da partição em baldes
     barril_t *barris[ntasks]; // barril := lista com todos os baldes
     for (unsigned int i = 0; i < ntasks; i++) {
-        pthread_create(&threads[i], NULL, decompor_bloco, (void *) particao[i]);
+        // não é a primeira vez da thread computando
+        if (i % nthreads != i) {
+            // capturando o valor de retorno da execução anterior dessa thread
+            pthread_join(threads[i % nthreads], (void *) (barris + i - nthreads));
+        }
+        pthread_create(&threads[i % nthreads], NULL, decompor_bloco, (void *) particao[i]);
+    }
+    for (unsigned int i = ntasks - nthreads; i < ntasks; i++) {
+        pthread_join(threads[i % nthreads], (void *) (barris + i));
     }
 
-    for (unsigned int i = 0; i < ntasks; i++) {
-        pthread_join(threads[i], (void *) (barris + i));
-    }
-
-    // DEBUG
     // imprimir_barris(ntasks, barris);
 
     // Fase 3: Aplicar bubble sort em cada balde
     for (unsigned int i = 0; i < ntasks; i++) {
-        pthread_create(&threads[i], NULL, ordenar_baldes, (void *) barris[i]);
+        // não é a primeira vez da thread computando
+        if (i % nthreads != i) {
+            // capturando o valor de retorno da execução anterior dessa thread
+            pthread_join(threads[i % nthreads], NULL);
+        }
+        pthread_create(&threads[i % nthreads], NULL, ordenar_baldes, (void *) barris[i]);
     }
-    for (unsigned int i = 0; i < ntasks; i++) {
-        pthread_join(threads[i], NULL);
+    for (unsigned int i = ntasks - nthreads; i < ntasks; i++) {
+        pthread_join(threads[i % nthreads], NULL);
     }
 
-    imprimir_barris(ntasks, barris);
+    // imprimir_barris(ntasks, barris);
 
-    caixote_t *caixotes[ntasks];
     // Fase 4: Mesclar conteúdo dos baldes e armazenar em contêineres
+    caixote_t *caixotes[ntasks];
+    conteiner_t *containeres[ntasks];
     for (unsigned int i = 0; i < ntasks; i++) {
         caixotes[i] = malloc(sizeof(caixote_t));
         caixotes[i]->barris = barris;
         caixotes[i]->indice_balde = i;
         caixotes[i]->num_barris = ntasks;
         caixotes[i]->tam_vetor = tam;
-        pthread_create(&threads[i], NULL, conteinerizar, (void *) caixotes[i]);
+        // não é a primeira vez da thread computando
+        if (i % nthreads != i) {
+            // capturando o valor de retorno da execução anterior dessa thread
+            pthread_join(threads[i % nthreads], (void *) (containeres + i - nthreads));
+            free(caixotes[i - nthreads]);
+        }
+        pthread_create(&threads[i % nthreads], NULL, conteinerizar, (void *) caixotes[i]);
     }
-
-    conteiner_t *containeres[ntasks];
-    for (unsigned int i = 0; i < ntasks; i++) {
-        pthread_join(threads[i], (void *) (containeres + i));
+    for (unsigned int i = ntasks - nthreads; i < ntasks; i++) {
+        pthread_join(threads[i % nthreads], (void *) (containeres + i));
         free(caixotes[i]);
     }
 
@@ -292,10 +309,15 @@ int sort_paralelo(unsigned int *vetor, unsigned int tam, unsigned int ntasks, un
 
     // Fase 5: Aplicar bubble sort em cada contêiner
     for (unsigned int i = 0; i < ntasks; i++) {
-        pthread_create(&threads[i], NULL, ordenar_container, (void *) containeres[i]);
+        // não é a primeira vez da thread computando
+        if (i % nthreads != i) {
+            // capturando o valor de retorno da execução anterior dessa thread
+            pthread_join(threads[i % nthreads], NULL);
+        }
+        pthread_create(&threads[i % nthreads], NULL, ordenar_container, (void *) containeres[i]);
     }
-    for (unsigned int i = 0; i < ntasks; i++) {
-        pthread_join(threads[i], NULL);
+    for (unsigned int i = ntasks - nthreads; i < ntasks; i++) {
+        pthread_join(threads[i % nthreads], NULL);
     }
 
     // imprimir_containeres(ntasks, containeres);
@@ -308,11 +330,16 @@ int sort_paralelo(unsigned int *vetor, unsigned int tam, unsigned int ntasks, un
         vetorizados[i]->vetor = vetor;
         vetorizados[i]->container = containeres[i];
         vetorizados[i]->inicio = inicio;
-        pthread_create(&threads[i], NULL, vetorizador, (void *) vetorizados[i]);
+        // não é a primeira vez da thread computando
+        if (i % nthreads != i) {
+            // capturando o valor de retorno da execução anterior dessa thread
+            pthread_join(threads[i % nthreads], NULL);
+        }
+        pthread_create(&threads[i % nthreads], NULL, vetorizador, (void *) vetorizados[i]);
         inicio += vetorizados[i]->container->tamanho;
     }
-    for (unsigned int i = 0; i < ntasks; i++) {
-        pthread_join(threads[i], NULL);
+    for (unsigned int i = ntasks - nthreads; i < ntasks; i++) {
+        pthread_join(threads[i % nthreads], NULL);
     }
 
     // Limpando a casa
@@ -327,6 +354,7 @@ int sort_paralelo(unsigned int *vetor, unsigned int tam, unsigned int ntasks, un
         free(barris[i]->baldes);
         free(barris[i]);
     }
+
     return 0;
 }
 
